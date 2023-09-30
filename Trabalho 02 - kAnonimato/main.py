@@ -1,14 +1,38 @@
 import sys
+import pandas as pd
 
 from optparse import OptionParser
 
-BEGIN_DATE = ['ano', 'decada', 'seculo']
-REGION = ['cidade', 'pais', 'sub-regiao', 'regiao']
+BEGIN_DATE = ['Ano', 'Decada', 'Seculo']
+REGION = ['Cidade', 'Pais', 'Sub-regiao', 'Regiao']
+
+'''
+Ler um registro Region e retorna o valor referente a região de interesse [Cidade, País, Sub-Região, Região]
+  :param region: um elemento de Region
+  :param i: nível de hierarquia passado no momento de chamada do programa
+'''
+def get_region(region, i):
+    register = region.split('; ')
+    return register[i]
+
+'''
+Recebe uma entrada de ano e retorna a decada correspondente
+'''
+def get_decada(year):
+    decada = (year // 10) * 10
+    return decada
+
+'''
+Recebe uma entrada de ano e retorna o seculo correspondente
+'''
+def get_seculo(year):
+    seculo = (year - 1) // 100 + 1
+    return seculo
 
 def k_anonimato(options, args, k):
     # Open datafile
     try:
-        datafile = open(args[0], 'r')
+        datafile = pd.read_csv(args[0])
     except IOError as exc:
         print(exc)
         sys.exit(1)
@@ -17,7 +41,24 @@ def k_anonimato(options, args, k):
         print("usage: python %prog [options] <datafile>")
         sys.exit(1)
     
+    # Passo do modelo ==============================================================
+    new_datafile = pd.DataFrame()
+    # Generalizando Region referente ao nível de hierarquia passado
+    new_datafile['Region'] = datafile['Region'].apply(lambda x: get_region(x, options.region))
 
+    # Generalizando BeginDate referente ao nível de hierarquia
+    if options.begindate == 0:
+        ...
+    elif options.begindate == 1:
+        new_datafile['BeginDate'] = datafile['BeginDate'].apply(get_decada)
+    else:
+        new_datafile['BeginDate'] = datafile['BeginDate'].apply(get_seculo)
+
+    
+    # Fim do modelo ================================================================
+
+    # Criar e salvar arquivo de saída csv [kAnonArtists.csv]
+    new_datafile.to_csv(f"{k}AnonArtists.csv", index=False)
 
 def main():
     K = [2, 4, 8]
