@@ -48,12 +48,28 @@ def k_anonimato(options, args, k):
 
     # Generalizando BeginDate referente ao nível de hierarquia
     if options.begindate == 0:
+        # Precisa alterar algo (?)
         ...
     elif options.begindate == 1:
         new_datafile['BeginDate'] = datafile['BeginDate'].apply(get_decada)
     else:
         new_datafile['BeginDate'] = datafile['BeginDate'].apply(get_seculo)
 
+    # Minha ideia:
+    # Depois de ter feito a generalização de todo o dataset, tentar montar as classes de equivalência
+    # a partir do campo do ano. Se para determinada classe tivermos seu tamanho < k, buscamos por por outra
+    # classe de equivalência que (tenha o campo de region igual)² e tamanho < k e generaliza o campo BeginDate
+    # para incluir o intervalor dessas duas classes [Ex: 'Brazil', '1930 - 1960'].
+
+    # Então primeiro, após a generalização, seria interessante varrer todo o dataset e adicionar uma nova 
+    # coluna para catalogar quantos outros registro um registro tem igual a ele
+
+    # Problemas:
+    # 1. Estou assumindo que devemos começar generalizando todo o dataset.
+    # 2. Com certeza deve ter algum caso que vai falhar a ideia²
+    # 3. Deve existir ideias melhores
+
+    # > agora que paro pra pensar acho que deveria ter escrito isso tudo num README...
     
     # Fim do modelo ================================================================
 
