@@ -16,18 +16,16 @@ def get_region(region, i):
     return register[i]
 
 '''
-Recebe uma entrada de ano e retorna a decada correspondente
+Recebe uma entrada referente ao ano e generaliza o dado de acordo com o nível passado.
 '''
-def get_decada(year):
-    decada = (year // 10) * 10
-    return decada
+def generalize_begindate(year, level):
+    if BEGIN_DATE[level] == 'Decada':
+        return (year // 10) * 10
+    elif BEGIN_DATE[level] == 'Seculo':
+        return (year - 1) // 100 + 1
+    
+    return year
 
-'''
-Recebe uma entrada de ano e retorna o seculo correspondente
-'''
-def get_seculo(year):
-    seculo = (year - 1) // 100 + 1
-    return seculo
 
 def k_anonimato(options, args, k):
     # Open datafile
@@ -42,39 +40,30 @@ def k_anonimato(options, args, k):
         sys.exit(1)
     
     # Passo do modelo ==============================================================
-    new_datafile = pd.DataFrame()
+    anonymized_data = pd.DataFrame()
     # Generalizando Region referente ao nível de hierarquia passado
-    new_datafile['Region'] = datafile['Region'].apply(lambda x: get_region(x, options.region))
+    anonymized_data['Region'] = datafile['Region'].apply(lambda x: get_region(x, options.region))
 
     # Generalizando BeginDate referente ao nível de hierarquia
-    if options.begindate == 0:
-        # Precisa alterar algo (?)
-        ...
-    elif options.begindate == 1:
-        new_datafile['BeginDate'] = datafile['BeginDate'].apply(get_decada)
+    anonymized_data['BeginDate'] = datafile['BeginDate'].apply(lambda x: generalize_begindate(x, options.begindate))
+
+    # Calcular o tamanho médio das classes de equivalência
+    class_sizes = anonymized_data.groupby(['BeginDate', 'Region']).size()
+    mean_class_size = class_sizes.mean()
+
+    # Calcular a precisão
+    if (len(class_sizes) == 0):
+        precision = 0
     else:
-        new_datafile['BeginDate'] = datafile['BeginDate'].apply(get_seculo)
+        precision = len(class_sizes[class_sizes >= k]) / len(class_sizes)
 
-    # Minha ideia:
-    # Depois de ter feito a generalização de todo o dataset, tentar montar as classes de equivalência
-    # a partir do campo do ano. Se para determinada classe tivermos seu tamanho < k, buscamos por por outra
-    # classe de equivalência que (tenha o campo de region igual)² e tamanho < k e generaliza o campo BeginDate
-    # para incluir o intervalor dessas duas classes [Ex: 'Brazil', '1930 - 1960'].
-
-    # Então primeiro, após a generalização, seria interessante varrer todo o dataset e adicionar uma nova 
-    # coluna para catalogar quantos outros registro um registro tem igual a ele
-
-    # Problemas:
-    # 1. Estou assumindo que devemos começar generalizando todo o dataset.
-    # 2. Com certeza deve ter algum caso que vai falhar a ideia²
-    # 3. Deve existir ideias melhores
-
-    # > agora que paro pra pensar acho que deveria ter escrito isso tudo num README...
+    anonymized_data['Income ($)'] = datafile['Income ($)']
     
     # Fim do modelo ================================================================
 
     # Criar e salvar arquivo de saída csv [kAnonArtists.csv]
-    new_datafile.to_csv(f"{k}AnonArtists.csv", index=False)
+    anonymized_data.to_csv(f"{k}AnonArtists.csv", index=False)
+    return mean_class_size, precision
 
 def main():
     K = [2, 4, 8]
@@ -108,6 +97,10 @@ def main():
 
     # Executar modelo k-Anonimato...
     for k in K:
-        k_anonimato(options, args, k)
+        mean_class_size, precision = k_anonimato(options, args, k)
+        print(f'Anonimização concluída para k={k}, BeginDate={BEGIN_DATE[options.begindate]}, Region={REGION[options.region]}')
+        print(f'Tamanho médio das classes de equivalência: {mean_class_size:.2f}')
+        print(f'Precisão: {precision:.2f}')
+
 
 main()
