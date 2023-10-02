@@ -1,5 +1,6 @@
 import sys
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from optparse import OptionParser
 
@@ -49,16 +50,21 @@ def k_anonimato(options, args, k):
 
     # Calcular o tamanho classes de equivalência
     class_sizes = anonymized_data.groupby(['BeginDate', 'Region']).size()
+
+    # Filtrar as classes que não satisfazem k
+    filtered_classes = class_sizes[class_sizes < k]
     
-    # Pegar intervalo de datas das classes que não satisfazem k
-    min_begin_date = class_sizes[class_sizes < k].index.min()[0]
-    max_begin_date = class_sizes[class_sizes < k].index.max()[0]
-    # Generalizar classes que não satisfazem k
-    for (begin_date, region), count in class_sizes.items():
-        if count < k:
-            anonymized_data.loc[(anonymized_data['BeginDate'] == begin_date) & (anonymized_data['Region'] == region), 'Region'] = 'World'
-            anonymized_data.loc[(anonymized_data['BeginDate'] == begin_date) & (anonymized_data['Region'] == "World"), 'BeginDate'] = f'{min_begin_date}-{max_begin_date}'
-            
+    # Calcular min e max apenas para as classes que não satisfazem k
+    if not filtered_classes.empty:
+        min_begin_date = filtered_classes.index.get_level_values(0).min()
+        max_begin_date = filtered_classes.index.get_level_values(0).max()
+
+        # Generalizar classes que não satisfazem k
+        for (begin_date, region), count in class_sizes.items():
+            if count < k:
+                anonymized_data.loc[(anonymized_data['BeginDate'] == begin_date) & (anonymized_data['Region'] == region), 'Region'] = 'World'
+                anonymized_data.loc[(anonymized_data['BeginDate'] == begin_date) & (anonymized_data['Region'] == "World"), 'BeginDate'] = f'{min_begin_date}-{max_begin_date}'
+
     # Recalcular o tamanho médio das classes de equivalência
     class_sizes = anonymized_data.groupby(['BeginDate', 'Region']).size()
     mean_class_size = class_sizes.mean()
@@ -71,7 +77,7 @@ def k_anonimato(options, args, k):
 
     # Criar e salvar arquivo de saída csv [kAnonArtists.csv]
     anonymized_data.to_csv(f"{k}AnonArtists.csv", index=False)
-    return mean_class_size, precision
+    return  anonymized_data, mean_class_size, precision
 
 def main():
     K = [2, 4, 8]
@@ -105,9 +111,16 @@ def main():
 
     # Executar modelo k-Anonimato...
     for k in K:
-        mean_class_size, precision = k_anonimato(options, args, k)
+        anon_data, mean_class_size, precision = k_anonimato(options, args, k)
         print(f'Anonimização concluída para k={k}, BeginDate={BEGIN_DATE[options.begindate]}, Region={REGION[options.region]}')
         print(f'Tamanho médio das classes de equivalência: {mean_class_size:.2f}')
         print(f'Precisão: {precision:.2f}')
+
+        # Plotar histograma das classes de equivalência
+        plt.hist(anon_data.groupby(['BeginDate', 'Region']).size(), bins=20)
+        plt.xlabel('Tamanho das classes de equivalência')
+        plt.ylabel('Número de classes de equivalência')
+        plt.title(f'k={k}, BeginDate={BEGIN_DATE[options.begindate]}, Region={REGION[options.region]}')
+        plt.show()
 
 main()
