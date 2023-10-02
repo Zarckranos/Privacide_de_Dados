@@ -47,16 +47,24 @@ def k_anonimato(options, args, k):
     # Generalizando BeginDate referente ao nível de hierarquia
     anonymized_data['BeginDate'] = datafile['BeginDate'].apply(lambda x: generalize_begindate(x, options.begindate))
 
-    # Calcular o tamanho médio das classes de equivalência
+    # Calcular o tamanho classes de equivalência
+    class_sizes = anonymized_data.groupby(['BeginDate', 'Region']).size()
+    
+    # Pegar intervalo de datas das classes que não satisfazem k
+    min_begin_date = class_sizes[class_sizes < k].index.min()[0]
+    max_begin_date = class_sizes[class_sizes < k].index.max()[0]
+    # Generalizar classes que não satisfazem k
+    for (begin_date, region), count in class_sizes.items():
+        if count < k:
+            anonymized_data.loc[(anonymized_data['BeginDate'] == begin_date) & (anonymized_data['Region'] == region), 'Region'] = 'World'
+            anonymized_data.loc[(anonymized_data['BeginDate'] == begin_date) & (anonymized_data['Region'] == "World"), 'BeginDate'] = f'{min_begin_date}-{max_begin_date}'
+            
+    # Recalcular o tamanho médio das classes de equivalência
     class_sizes = anonymized_data.groupby(['BeginDate', 'Region']).size()
     mean_class_size = class_sizes.mean()
 
     # Calcular a precisão
-    if (len(class_sizes) == 0):
-        precision = 0
-    else:
-        precision = len(class_sizes[class_sizes >= k]) / len(class_sizes)
-
+    precision = len(class_sizes[class_sizes >= k]) / len(class_sizes)
     anonymized_data['Income ($)'] = datafile['Income ($)']
     
     # Fim do modelo ================================================================
@@ -101,6 +109,5 @@ def main():
         print(f'Anonimização concluída para k={k}, BeginDate={BEGIN_DATE[options.begindate]}, Region={REGION[options.region]}')
         print(f'Tamanho médio das classes de equivalência: {mean_class_size:.2f}')
         print(f'Precisão: {precision:.2f}')
-
 
 main()
